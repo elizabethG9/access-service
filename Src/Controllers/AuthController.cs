@@ -1,5 +1,6 @@
 using access_service.Src.DTOs;
 using access_service.Src.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace access_service.Src.Controllers
@@ -10,10 +11,12 @@ namespace access_service.Src.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
+        private readonly IBlackListService _blackListService;
         
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IBlackListService blackListService)
         {
             _authService = authService;
+            _blackListService = blackListService;
         }
 
         [HttpPost("login")]
@@ -30,11 +33,22 @@ namespace access_service.Src.Controllers
             return Ok(result);
         }
 
-        [HttpPost("update-password")]
+        [Authorize]
+        [HttpPatch("update-password")]
         public async Task<IActionResult> UpdatePassword([FromBody]UpdatePasswordDto updatePasswordDto)
         {
-            await _authService.UpdatePassword(updatePasswordDto);
-            return Ok();
+            try
+            {
+                await _authService.UpdatePassword(updatePasswordDto, 1);
+                // Add token to blacklist
+                var token = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+                _blackListService.AddToBlacklist(token);
+                return Ok();
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e.Message);
+            }
         }
     }
 }

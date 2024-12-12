@@ -5,6 +5,7 @@ using access_service.Src.DTOs;
 using access_service.Src.Models;
 using access_service.Src.Repositories.Interfaces;
 using access_service.Src.Services.Interfaces;
+using DotNetEnv;
 using Microsoft.IdentityModel.Tokens;
 
 namespace access_service.Src.Services
@@ -12,11 +13,10 @@ namespace access_service.Src.Services
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
-        private readonly string _secretKey;
-        public AuthService(IUserRepository userRepository, string secretKey)
+    
+        public AuthService(IUserRepository userRepository)
         {
             _userRepository = userRepository;
-            _secretKey = secretKey;
 
         }
         public async Task<LoggedUserDto> Login(LoginUserDto loginUserDto)
@@ -27,7 +27,7 @@ namespace access_service.Src.Services
             var verifyPassword = BCrypt.Net.BCrypt.Verify(loginUserDto.Password, user.Password); 
             if (!verifyPassword) throw new Exception("Contraseña invalida");
 
-            var token = await GenerateJwtTokenAsync(user);
+            var token = CreateToken(user);
 
             var loggedUser = new LoggedUserDto
             {
@@ -55,7 +55,7 @@ namespace access_service.Src.Services
             var createdUser = await _userRepository.CreateUser(user);
 
             // Generar un JWT para el usuario registrado
-            var token = await GenerateJwtTokenAsync(createdUser);
+            var token = CreateToken(createdUser);
 
             // Devolver un DTO con la información del usuario y el token
             return new LoggedUserDto
@@ -63,10 +63,10 @@ namespace access_service.Src.Services
                 Token = token
             };
         }
-        public async Task UpdatePassword(UpdatePasswordDto updatePasswordDto)
+        public async Task UpdatePassword(UpdatePasswordDto updatePasswordDto, int userId)
         {
             //verificar que la contraseña sea correcta y que la nueva y la confirmacion de la password sean iguales
-            var user = await _userRepository.GetById(updatePasswordDto.Id);
+            var user = await _userRepository.GetById(userId);
             if (user == null) throw new Exception("User not found");
 
             var verifyPassword = BCrypt.Net.BCrypt.Verify(updatePasswordDto.CurrentPassword, user.Password);
@@ -78,8 +78,7 @@ namespace access_service.Src.Services
             var salt = BCrypt.Net.BCrypt.GenerateSalt(12);
             user.Password = BCrypt.Net.BCrypt.HashPassword(updatePasswordDto.NewPassword, salt);
 
-        // Guardar los cambios en el repositorio
-            await _userRepository.UpdatePassword(updatePasswordDto.Id, user.Password);
+            await _userRepository.UpdatePassword(userId, user.Password);
         }
         private async Task ValidateEmailAndRut(string email, string rut)
         {
@@ -89,23 +88,27 @@ namespace access_service.Src.Services
             var userByRut = await _userRepository.GetByRut(rut);
             if (userByRut != null) throw new Exception("El Rut ya existe en el sistema");
         }
-        private async Task<string> GenerateJwtTokenAsync(User user)
+        private string CreateToken(User user)
         {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_secretKey);
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(
-                [
-                    new Claim("Id", user.Id.ToString()),
+            Env.Load();
+            var secret = Env.GetString("JWT_SECRET");
 
-                ]),
-                Expires = DateTime.UtcNow.AddHours(1),
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            var claims = new List<Claim>{
+                new ("Id", user.Id.ToString()),
             };
 
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return await Task.FromResult(tokenHandler.WriteToken(token));
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+                    secret));
+
+            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var token = new JwtSecurityToken(
+                claims: claims,
+                expires: DateTime.Now.AddHours(2),
+                signingCredentials: creds
+            );
+
+            var jwt = new JwtSecurityTokenHandler().WriteToken(token);
+            return jwt;
         }
         
     }

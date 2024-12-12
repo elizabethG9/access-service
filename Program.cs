@@ -1,11 +1,61 @@
-var builder = WebApplication.CreateBuilder(args);
+using System.Text;
+using access_service.Src.Data;
+using access_service.Src.Middlewares;
+using access_service.Src.Repositories;
+using access_service.Src.Repositories.Interfaces;
+using access_service.Src.Services;
+using access_service.Src.Services.Interfaces;
+using DotNetEnv;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+var builder = WebApplication.CreateBuilder(args);
+Env.Load();
+
+var host = Env.GetString("DB_HOST");
+var port = Env.GetString("DB_PORT");
+var dbName = Env.GetString("DB_NAME");
+var user = Env.GetString("DB_USER");
+var password = Env.GetString("DB_PASSWORD");
+
+var connectionString = $"Host={host};Port={port};Database={dbName};Username={user};Password={password}";
+
+builder.Services.AddDbContext<DataContext>(options =>
+    options.UseNpgsql(connectionString));
+
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<IBlackListService, BlackListService>();
+
+builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddControllers();
+builder.Services.AddTransient<Seed>();
+
+var secret = Env.GetString("JWT_SECRET");
+
+builder.Services.AddAuthentication().AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters()
+    {
+        ValidateIssuerSigningKey = true,
+        ValidateIssuer = false,
+        ValidateAudience = false,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+            secret
+        ))
+    };
+});
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var seed = scope.ServiceProvider.GetRequiredService<Seed>();
+    var context = scope.ServiceProvider.GetRequiredService<DataContext>();
+    seed.SeedData(context);
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -15,30 +65,14 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+app.UseMiddleware<BlackListMiddleware>();
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+
+app.MapControllers();
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+

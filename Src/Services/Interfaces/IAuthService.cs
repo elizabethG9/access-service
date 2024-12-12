@@ -6,6 +6,6 @@ namespace access_service.Src.Services.Interfaces
     {
         public Task <LoggedUserDto> Login(LoginUserDto loginUserDto);
         public Task <LoggedUserDto> Register(RegisterUserDto registerUserDto);
-        public Task UpdatePassword(UpdatePasswordDto updatePasswordDto);
+        public Task UpdatePassword(UpdatePasswordDto updatePasswordDto, int userId);
     }
 }
