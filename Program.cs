@@ -6,8 +6,10 @@ using access_service.Src.Repositories.Interfaces;
 using access_service.Src.Services;
 using access_service.Src.Services.Interfaces;
 using DotNetEnv;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Shared.Messages;
 
 var builder = WebApplication.CreateBuilder(args);
 Env.Load();
@@ -47,6 +49,27 @@ builder.Services.AddAuthentication().AddJwtBearer(options =>
         ))
     };
 });
+
+builder.Services.AddMassTransit(x =>
+{
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host("localhost","/", h =>
+        {
+            h.Username("guest");
+            h.Password("guest");
+        });
+
+        cfg.Send<CreateUserMessage>(config =>
+            config.UseRoutingKeyFormatter(context => "create-user-queue")
+        );
+
+        cfg.Send<TokenToBlacklistMessage>(config =>
+            config.UseRoutingKeyFormatter(context => "token-blacklist-queue")
+        );
+    });
+});
+
 
 var app = builder.Build();
 

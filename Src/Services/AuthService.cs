@@ -6,6 +6,7 @@ using access_service.Src.Models;
 using access_service.Src.Repositories.Interfaces;
 using access_service.Src.Services.Interfaces;
 using DotNetEnv;
+using MassTransit;
 using Microsoft.IdentityModel.Tokens;
 
 namespace access_service.Src.Services
@@ -13,10 +14,13 @@ namespace access_service.Src.Services
     public class AuthService : IAuthService
     {
         private readonly IUserRepository _userRepository;
+
+        private readonly IPublishEndpoint _publishEndpoint;
     
-        public AuthService(IUserRepository userRepository)
+        public AuthService(IUserRepository userRepository, IPublishEndpoint publishEndpoint)
         {
             _userRepository = userRepository;
+            _publishEndpoint = publishEndpoint;
 
         }
         public async Task<LoggedUserDto> Login(LoginUserDto loginUserDto)
@@ -53,6 +57,19 @@ namespace access_service.Src.Services
 
             // Guardar el usuario en el repositorio
             var createdUser = await _userRepository.CreateUser(user);
+
+            var message = new CreateUserDto
+            {
+                Id = createdUser.Id,
+                Name = registerUserDto.Name,
+                FirstLastName = registerUserDto.FirstLastName,
+                SecondLastName = registerUserDto.SecondLastName,
+                Rut = registerUserDto.Rut,
+                Email = registerUserDto.Email,
+                CareerId = registerUserDto.CareerId
+            };
+
+            await _publishEndpoint.Publish(message);
 
             // Generar un JWT para el usuario registrado
             var token = CreateToken(createdUser);

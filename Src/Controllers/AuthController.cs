@@ -1,7 +1,9 @@
 using access_service.Src.DTOs;
 using access_service.Src.Services.Interfaces;
+using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Shared.Messages;
 
 namespace access_service.Src.Controllers
 {
@@ -12,11 +14,14 @@ namespace access_service.Src.Controllers
     {
         private readonly IAuthService _authService;
         private readonly IBlackListService _blackListService;
+
+        private readonly IPublishEndpoint _publishEndpoint;
         
-        public AuthController(IAuthService authService, IBlackListService blackListService)
+        public AuthController(IAuthService authService, IBlackListService blackListService, IPublishEndpoint publishEndpoint)
         {
             _authService = authService;
             _blackListService = blackListService;
+            _publishEndpoint = publishEndpoint;
         }
 
         [HttpPost("login")]
@@ -43,6 +48,12 @@ namespace access_service.Src.Controllers
                 // Add token to blacklist
                 var token = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
                 _blackListService.AddToBlacklist(token);
+                var message = new BlackListMessage
+                {
+                    Token = token
+                };
+                await _publishEndpoint.Publish(message);
+
                 return Ok();
             }
             catch (Exception e)
