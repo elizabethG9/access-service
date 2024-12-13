@@ -48,7 +48,7 @@ namespace access_service.Src.Controllers
                 // Add token to blacklist
                 var token = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
                 _blackListService.AddToBlacklist(token);
-                var message = new BlackListMessage
+                var message = new TokenToBlacklistMessage
                 {
                     Token = token
                 };
