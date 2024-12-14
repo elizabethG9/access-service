@@ -1,4 +1,5 @@
 using access_service.Src.DTOs;
+using access_service.Src.Helpers;
 using access_service.Src.Services.Interfaces;
 using MassTransit;
 using Microsoft.AspNetCore.Authorization;
@@ -27,15 +28,31 @@ namespace access_service.Src.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody]LoginUserDto loginUserDto)
         {
-            var result = await _authService.Login(loginUserDto);
-            return Ok(result);
+            try
+            {
+                var result = await _authService.Login(loginUserDto);
+                return Ok(result);
+            }
+            catch (BadRequestException BadRequest)
+            {
+                throw new BadRequestException(BadRequest.Message);
+            }
+
         }
         
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody]RegisterUserDto registerUserDto)
         {
-            var result = await _authService.Register(registerUserDto);
-            return Ok(result);
+            try
+            {
+                var result = await _authService.Register(registerUserDto);
+                return Ok(result);
+            }
+            catch (BadRequestException BadRequest)
+            {
+                throw new BadRequestException(BadRequest.Message);
+            }
+            
         }
 
         [Authorize]
@@ -56,9 +73,9 @@ namespace access_service.Src.Controllers
 
                 return Ok();
             }
-            catch (Exception e)
+            catch (BadRequestException BadRequest)
             {
-                return BadRequest(e.Message);
+                throw new BadRequestException(BadRequest.Message); 
             }
         }
     }

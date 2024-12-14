@@ -2,11 +2,13 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using access_service.Src.DTOs;
+using access_service.Src.Helpers;
 using access_service.Src.Models;
 using access_service.Src.Repositories.Interfaces;
 using access_service.Src.Services.Interfaces;
 using DotNetEnv;
 using MassTransit;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.IdentityModel.Tokens;
 
 namespace access_service.Src.Services
@@ -26,10 +28,10 @@ namespace access_service.Src.Services
         public async Task<LoggedUserDto> Login(LoginUserDto loginUserDto)
         {
             //verificar que el correo y contraseña sean correctos
-            var user = await _userRepository.GetByEmail(loginUserDto.Email) ?? throw new Exception("Usuario no encontrado");
-
+            var user = await _userRepository.GetByEmail(loginUserDto.Email) ?? throw new NotFoundException("Usuario no encontrado");
             var verifyPassword = BCrypt.Net.BCrypt.Verify(loginUserDto.Password, user.Password); 
-            if (!verifyPassword) throw new Exception("Contraseña invalida");
+
+            if (!verifyPassword) throw new BadRequestException("Contraseña invalida");
 
             var token = CreateToken(user);
 
@@ -84,13 +86,19 @@ namespace access_service.Src.Services
         {
             //verificar que la contraseña sea correcta y que la nueva y la confirmacion de la password sean iguales
             var user = await _userRepository.GetById(userId);
-            if (user == null) throw new Exception("User not found");
+            if (user == null) 
+            {
+                throw new NotFoundException("Usuario no encontrado");
+            }
 
             var verifyPassword = BCrypt.Net.BCrypt.Verify(updatePasswordDto.CurrentPassword, user.Password);
-            if (!verifyPassword) throw new Exception("Invalid password");
+            if (!verifyPassword)
+            {
+                throw new BadRequestException("Contraseña inválida");
+            }
 
             if (updatePasswordDto.NewPassword != updatePasswordDto.ConfirmNewPassword){
-                throw new Exception("Las contraseñas no coinciden");
+                throw new BadRequestException("Las contraseñas no coinciden");
             }
             var salt = BCrypt.Net.BCrypt.GenerateSalt(12);
             user.Password = BCrypt.Net.BCrypt.HashPassword(updatePasswordDto.NewPassword, salt);
@@ -100,10 +108,10 @@ namespace access_service.Src.Services
         private async Task ValidateEmailAndRut(string email, string rut)
         {
             var userByEmail = await _userRepository.GetByEmail(email);
-            if (userByEmail != null) throw new Exception("El email ya existe en el sistema");
+            if (userByEmail != null) throw new BadRequestException("El email ya existe en el sistema");
 
             var userByRut = await _userRepository.GetByRut(rut);
-            if (userByRut != null) throw new Exception("El Rut ya existe en el sistema");
+            if (userByRut != null) throw new BadRequestException("El Rut ya existe en el sistema");
         }
         private string CreateToken(User user)
         {
