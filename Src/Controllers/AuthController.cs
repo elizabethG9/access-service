@@ -28,30 +28,19 @@ namespace access_service.Src.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody]LoginUserDto loginUserDto)
         {
-            try
-            {
-                var result = await _authService.Login(loginUserDto);
-                return Ok(result);
-            }
-            catch (BadRequestException BadRequest)
-            {
-                throw new BadRequestException(BadRequest.Message);
-            }
+
+            var result = await _authService.Login(loginUserDto);
+            return Ok(result);
 
         }
         
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody]RegisterUserDto registerUserDto)
         {
-            try
-            {
-                var result = await _authService.Register(registerUserDto);
-                return Ok(result);
-            }
-            catch (BadRequestException BadRequest)
-            {
-                throw new BadRequestException(BadRequest.Message);
-            }
+
+            var result = await _authService.Register(registerUserDto);
+            return Ok(result);
+
             
         }
 
@@ -59,24 +48,18 @@ namespace access_service.Src.Controllers
         [HttpPatch("update-password")]
         public async Task<IActionResult> UpdatePassword([FromBody]UpdatePasswordDto updatePasswordDto)
         {
-            try
-            {
-                await _authService.UpdatePassword(updatePasswordDto, 1);
-                // Add token to blacklist
-                var token = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-                _blackListService.AddToBlacklist(token);
-                var message = new TokenToBlacklistMessage
-                {
-                    Token = token
-                };
-                await _publishEndpoint.Publish(message);
 
-                return Ok();
-            }
-            catch (BadRequestException BadRequest)
+            await _authService.UpdatePassword(updatePasswordDto, 1);
+            // Add token to blacklist
+            var token = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
+            _blackListService.AddToBlacklist(token);
+            var message = new TokenToBlacklistMessage
             {
-                throw new BadRequestException(BadRequest.Message); 
-            }
+                Token = token
+            };
+            await _publishEndpoint.Publish(message);
+
+            return Ok("Contraseña actualizada");
         }
     }
 }

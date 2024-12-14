@@ -1,5 +1,6 @@
 using System.Text;
 using access_service.Src.Data;
+using access_service.Src.Helpers;
 using access_service.Src.Middlewares;
 using access_service.Src.Repositories;
 using access_service.Src.Repositories.Interfaces;
@@ -7,6 +8,7 @@ using access_service.Src.Services;
 using access_service.Src.Services.Interfaces;
 using DotNetEnv;
 using MassTransit;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Shared.Messages;
@@ -29,10 +31,10 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IBlackListService, BlackListService>();
 
+builder.Services.AddControllers();
 builder.Services.AddAuthorization();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddControllers();
 builder.Services.AddTransient<Seed>();
 
 var secret = Env.GetString("JWT_SECRET");
@@ -88,12 +90,12 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.UseMiddleware<BlackListMiddleware>();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
