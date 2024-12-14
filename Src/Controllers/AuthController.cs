@@ -10,7 +10,7 @@ namespace access_service.Src.Controllers
 {
     //aqui va login, register y update password
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("access-api/[controller]")]
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
