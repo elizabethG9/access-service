@@ -67,7 +67,10 @@ builder.Services.AddMassTransit(x =>
         );
 
         cfg.Send<TokenToBlacklistMessage>(config =>
-            config.UseRoutingKeyFormatter(context => "token-blacklist-queue")
+            {
+                config.UseRoutingKeyFormatter(context => "token-blacklist-queue-1");
+                config.UseRoutingKeyFormatter(context => "token-blacklist-queue-2");
+            }
         );
     });
 });
