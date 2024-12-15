@@ -40,16 +40,19 @@ namespace access_service.Src.Controllers
 
             var result = await _authService.Register(registerUserDto);
             return Ok(result);
-
-            
         }
 
         [Authorize]
         [HttpPatch("update-password")]
         public async Task<IActionResult> UpdatePassword([FromBody]UpdatePasswordDto updatePasswordDto)
         {
+            var userId = User.Claims.FirstOrDefault(c => c.Type == "id")?.Value;
+            if (userId == null)
+            {
+                return Unauthorized("Invalid token");
+            }
 
-            await _authService.UpdatePassword(updatePasswordDto, 1);
+            await _authService.UpdatePassword(updatePasswordDto, int.Parse(userId));
             // Add token to blacklist
             var token = HttpContext.Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
             _blackListService.AddToBlacklist(token);

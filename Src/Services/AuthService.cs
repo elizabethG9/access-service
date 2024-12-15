@@ -10,6 +10,7 @@ using DotNetEnv;
 using MassTransit;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.IdentityModel.Tokens;
+using Shared.Messages;
 
 namespace access_service.Src.Services
 {
@@ -60,7 +61,7 @@ namespace access_service.Src.Services
             // Guardar el usuario en el repositorio
             var createdUser = await _userRepository.CreateUser(user);
 
-            var message = new CreateUserDto
+            var userInfo = new CreateUserDto
             {
                 Id = createdUser.Id,
                 Name = registerUserDto.Name,
@@ -69,6 +70,10 @@ namespace access_service.Src.Services
                 Rut = registerUserDto.Rut,
                 Email = registerUserDto.Email,
                 CareerId = registerUserDto.CareerId
+            };
+            var message = new CreateUserMessage
+            {
+                User = userInfo
             };
 
             await _publishEndpoint.Publish(message);
@@ -111,7 +116,8 @@ namespace access_service.Src.Services
             if (userByEmail != null) throw new BadRequestException("El email ya existe en el sistema");
 
             var userByRut = await _userRepository.GetByRut(rut);
-            if (userByRut != null) throw new BadRequestException("El Rut ya existe en el sistema"); }
+            if (userByRut != null) throw new BadRequestException("El Rut ya existe en el sistema"); 
+        }
         private string CreateToken(User user)
         {
             Env.Load();

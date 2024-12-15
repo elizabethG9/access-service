@@ -38,6 +38,7 @@ namespace access_service.Src.Repositories
 
         public async Task<bool> UpdatePassword(int userId, string newPassword)
         {
+            
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
             if (user == null) return false;
 
