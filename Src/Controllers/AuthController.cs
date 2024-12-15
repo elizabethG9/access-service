@@ -46,7 +46,7 @@ namespace access_service.Src.Controllers
         [HttpPatch("update-password")]
         public async Task<IActionResult> UpdatePassword([FromBody]UpdatePasswordDto updatePasswordDto)
         {
-            var userId = User.Claims.FirstOrDefault(c => c.Type == "id")?.Value;
+            var userId = User.Claims.FirstOrDefault(c => c.Type == "Id")?.Value;
             if (userId == null)
             {
                 return Unauthorized("Invalid token");
